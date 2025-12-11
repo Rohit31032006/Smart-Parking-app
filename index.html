@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking App - Pune Malls</title>
+    <style>
+        /* === CSS Styling === */
+        :root {
+            --primary-color: #007bff;
+            --primary-dark: #0056b3;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --light-bg: #f8f9fa;
+            --slot-available: #e9ecef;
+            --slot-booked: #dc3545;
+            --slot-selected: #007bff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-bg);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2, h3 {
+            color: var(--primary-dark);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+
+        /* Form & Input Styling */
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input[type="text"], input[type="password"], input[type="date"], input[type="time"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        /* Button Styling */
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-block {
+            display: block;
+            width: 100%;
+        }
+
+        /* Mall Card Styling */
+        .mall-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .mall-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            transition: box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .mall-card:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .mall-card h3 {
+            margin-top: 0;
+            border-bottom: none;
+            color: var(--primary-color);
+        }
+
+        /* Parking Slot Grid */
+        #parking-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .slot {
+            padding: 15px 5px;
+            text-align: center;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .slot.available {
+            background-color: var(--slot-available);
+            border: 1px solid #ced4da;
+        }
+
+        .slot.booked {
+            background-color: var(--slot-danger);
+            color: white;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .slot.selected {
+            background-color: var(--slot-selected);
+            color: white;
+            border: 1px solid var(--primary-dark);
+            transform: scale(1.05);
+        }
+
+        .slot.booked:hover {
+            background-color: var(--slot-booked); /* No change on hover for booked */
+        }
+
+        .slot.available:hover {
+            background-color: #dee2e6;
+        }
+
+        /* Map Styling */
+        #map {
+            height: 300px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        /* Summary */
+        .summary-details {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: var(--light-bg);
+            margin-top: 20px;
+        }
+        .summary-details p {
+            margin: 8px 0;
+        }
+        .summary-details strong {
+            color: var(--primary-dark);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🅿️ Smart Parking App</h1>
+        <div id="status-message" class="alert hidden" role="alert"></div>
+
+        <section id="login-screen">
+            <h2>User Login</h2>
+            <div class="form-group">
+                <label for="username">Username (Any)</label>
+                <input type="text" id="username" value="user@example.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password (Any)</label>
+                <input type="password" id="password" value="password123" required>
+            </div>
+            <div class="form-group">
+                <input type="checkbox" id="remember-me">
+                <label for="remember-me" style="display: inline;">Remember Me</label>
+            </div>
+            <button class="btn-block" onclick="handleLogin()">Login</button>
+        </section>
+
+        <section id="mall-select-screen" class="hidden">
+            <h2>Select a Mall</h2>
+            <div class="mall-list" id="mall-list">
+                </div>
+            <button class="btn-block btn-secondary" onclick="handleLogout()" style="margin-top: 20px;">Logout</button>
+        </section>
+
+        <section id="booking-screen" class="hidden">
+            <h2 id="booking-mall-name">Booking for [Mall Name]</h2>
+
+            <div id="geolocation-status" class="alert alert-info">
+                Attempting to get your current location for directions...
+            </div>
+
+            <h3>📍 Mall Location & Directions</h3>
+            <div id="map"></div>
+            <button id="directions-btn" class="btn-secondary" onclick="getDirections()" disabled>Get Directions to Mall</button>
+            <a id="gmaps-link" target="_blank" class="hidden" style="margin-left: 10px; color: var(--primary-color);">Open in Google Maps</a>
+
+            <h3>🗓️ Choose Date, Time & Duration</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="booking-date">Date</label>
+                    <input type="date" id="booking-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="start-time">Start Time</label>
+                    <input type="time" id="start-time" required>
+                </div>
+                <div class="form-group">
+                    <label for="duration">Duration (Hours)</label>
+                    <input type="number" id="duration" min="1" max="8" value="2" required>
+                </div>
+            </div>
+
+            <h3>🚗 Select Your Slot (₹50/hour)</h3>
+            <div id="parking-slots">
+                </div>
+            <p style="font-weight: bold; margin-top: 15px;">Selected Slot: <span id="selected-slot-display">None</span></p>
+
+            <button class="btn-block" onclick="handleBooking()" style="margin-top: 20px;">
+                Proceed to Payment (<span id="total-price-display">₹100</span>)
+            </button>
+            <button class="btn-secondary" onclick="showScreen('mall-select-screen')" style="margin-top: 10px;">Change Mall</button>
+        </section>
+
+        <section id="payment-screen" class="hidden">
+            <h2>💳 Payment Details</h2>
+            <p class="alert alert-info">Total Amount Due: <strong id="payment-amount-display"></strong></p>
+
+            <div class="form-group">
+                <label for="card-name">Card Holder Name</label>
+                <input type="text" id="card-name" value="Test User" required>
+            </div>
+            <div class="form-group">
+                <label for="card-number">Card Number</label>
+                <input type="text" id="card-number" pattern="\d{16}" maxlength="16" value="1111222233334444" required>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="expiry">Expiry (MM/YY)</label>
+                    <input type="text" id="expiry" pattern="(0[1-9]|1[0-2])\/\d{2}" maxlength="5" value="12/26" required>
+                </div>
+                <div class="form-group">
+                    <label for="cvv">CVV</label>
+                    <input type="text" id="cvv" pattern="\d{3,4}" maxlength="4" value="123" required>
+                </div>
+            </div>
+
+            <p style="font-size: small; color: #6c757d;">
+                *In a production environment, this payment form would be replaced by a secure integration
+                with a payment gateway like **Stripe** or **PayPal**. For Stripe, you would use their
+                frontend SDK to securely capture card details and a backend to process the charge.
+            </p>
+
+            <button class="btn-block" onclick="handlePayment()">Complete Payment</button>
+            <button class="btn-secondary" onclick="showScreen('booking-screen')">Back to Booking</button>
+        </section>
+
+        <section id="summary-screen" class="hidden">
+            <h2>🎉 Booking Confirmed!</h2>
+            <p class="alert alert-success">Your parking slot is reserved. Enjoy your time at the mall!</p>
+
+            <h3>Booking Summary</h3>
+            <div class="summary-details">
+                <p><strong>Mall:</strong> <span id="summary-mall"></span></p>
+                <p><strong>Slot:</strong> <span id="summary-slot"></span></p>
+                <p><strong>Date & Time:</strong> <span id="summary-datetime"></span></p>
+                <p><strong>Duration:</strong> <span id="summary-duration"></span> hours</p>
+                <p><strong>Total Price:</strong> <span id="summary-price"></span></p>
+                <p><strong>Booking ID:</strong> <span id="summary-id"></span></p>
+            </div>
+
+            <button class="btn-block" onclick="startNewBooking()" style="margin-top: 20px;">Start New Booking</button>
+            <button class="btn-secondary" onclick="handleLogout()">Logout</button>
+        </section>
+    </div>
+
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY_HERE&libraries=places,directions">
+    </script>
+
+    <script>
+        // --- Global Variables and Constants ---
+        const ALL_SCREENS = ['login-screen', 'mall-select-screen', 'booking-screen', 'payment-screen', 'summary-screen'];
+        const PARKING_SLOTS_COUNT = 16;
+        const PRICE_PER_HOUR = 50;
+
+        // Mall data structure - EXPANDED LIST
+        const MALLS = [
+            {
+                id: 'cinemahall_pune',
+                name: 'CinemaHall Mall, Pune (Prototype)',
+                coords: { lat: 18.5204, lng: 73.8567 }, // Pune City Center (Approx)
+                address: 'Pune City, Maharashtra'
+            },
+            {
+                id: 'phoenix_marketcity',
+                name: 'Phoenix Marketcity, Viman Nagar',
+                coords: { lat: 18.5635, lng: 73.9142 }, // Coordinates for Viman Nagar area
+                address: 'Viman Nagar, Pune'
+            },
+            {
+                id: 'amanora_mall',
+                name: 'Amanora Mall, Hadapsar',
+                coords: { lat: 18.5134, lng: 73.9351 }, // Coordinates for Hadapsar area
+                address: 'Hadapsar, Pune'
+            },
+            {
+                id: 'seasons_mall',
+                name: 'Season\'s Mall, Hadapsar',
+                coords: { lat: 18.5120, lng: 73.9280 }, // Coordinates near Amanora
+                address: 'Magarpatta, Pune'
+            }
+        ];
+
+        // State object to hold current booking details
+        let bookingState = {
+            isLoggedIn: false,
+            selectedMall: null,
+            selectedSlot: null,
+            date: null,
+            time: null,
+            duration: 2, // Default 2 hours
+            totalPrice: 0,
+            userLocation: null, // For Geolocation
+            map: null,
+            mallMarker: null,
+            currentBooking: {} // Final confirmed details
+        };
+
+        // --- Core Application Functions ---
+
+        /**
+         * Hides all screens and shows the one specified by ID.
+         * @param {string} screenId The ID of the screen to show.
+         */
+        function showScreen(screenId) {
+            ALL_SCREENS.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+            document.getElementById('status-message').classList.add('hidden');
+        }
+
+        /**
+         * Displays a status message (success/error/info).
+         * @param {string} message The message content.
+         * @param {string} type The type of alert (success, error, info).
+         */
+        function displayStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.className = `alert alert-${type}`;
+            statusEl.classList.remove('hidden');
+        }
+
+        // --- 1. Login Logic ---
+
+        function handleLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('remember-me').checked;
+
+            if (username && password) {
+                // Simulate successful login
+                bookingState.isLoggedIn = true;
+                if (rememberMe) {
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', username);
+                } else {
+                    localStorage.removeItem('isLoggedIn');
+                    localStorage.removeItem('username');
+                }
+                
+                displayStatus('Login successful!', 'success');
+                populateMallList();
+                showScreen('mall-select-screen');
+                getGeolocation(); // Start checking for user location
+            } else {
+                displayStatus('Please enter a username and password.', 'error');
+            }
+        }
+
+        function handleLogout() {
+            bookingState.isLoggedIn = false;
+            bookingState.selectedMall = null;
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('username');
+            showScreen('login-screen');
+            displayStatus('You have been logged out.', 'info');
+        }
+
+        function checkSession() {
+            if (localStorage.getItem('isLoggedIn') === 'true') {
+                bookingState.isLoggedIn = true;
+                populateMallList();
+                showScreen('mall-select-screen');
+                getGeolocation();
+            } else {
+                showScreen('login-screen');
+            }
+        }
+
+        // --- 2. Mall Selection Logic ---
+
+        function populateMallList() {
+            const mallListEl = document.getElementById('mall-list');
+            mallListEl.innerHTML = '';
+
+            MALLS.forEach(mall => {
+                const card = document.createElement('div');
+                card.className = 'mall-card';
+                card.innerHTML = `
+                    <h3>${mall.name}</h3>
+                    <p>Address: ${mall.address}</p>
+                    <button data-mall-id="${mall.id}" onclick="selectMall('${mall.id}')">Book Parking</button>
+                `;
+                mallListEl.appendChild(card);
+            });
+        }
+
+        function selectMall(mallId) {
+            bookingState.selectedMall = MALLS.find(m => m.id === mallId);
+            if (bookingState.selectedMall) {
+                document.getElementById('booking-mall-name').textContent = `Booking for ${bookingState.selectedMall.name}`;
+                showScreen('booking-screen');
+                initializeMap();
+                generateParkingSlots();
+                updatePriceDisplay();
+                // Set default date/time to now + 1 hour for booking
+                const now = new Date();
+                const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+                const dateString = now.toISOString().split('T')[0];
+                const timeString = oneHourLater.toTimeString().split(' ')[0].substring(0, 5);
+
+                document.getElementById('booking-date').value = dateString;
+                document.getElementById('start-time').value = timeString;
+                document.getElementById('duration').value = bookingState.duration;
+
+                // Listen for changes to recalculate price
+                document.getElementById('duration').addEventListener('input', updatePriceDisplay);
+            }
+        }
+
+        function updatePriceDisplay() {
+            const duration = parseInt(document.getElementById('duration').value, 10);
+            bookingState.duration = duration > 0 ? duration : 1;
+            bookingState.totalPrice = bookingState.duration * PRICE_PER_HOUR;
+            document.getElementById('total-price-display').textContent = `₹${bookingState.totalPrice}`;
+            document.getElementById('payment-amount-display').textContent = `₹${bookingState.totalPrice}`;
+        }
+
+        // --- 3. Google Maps Logic ---
+
+        function initializeMap() {
+            // Check if Google Maps API is loaded
+            if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                console.error("Google Maps API not loaded. Check the script tag and API key.");
+                document.getElementById('map').innerHTML = '<div class="alert alert-error">Google Maps API failed to load. Please check your API key in the HTML source.</div>';
+                return;
+            }
+
+            const mallCoords = bookingState.selectedMall.coords;
+            
+            bookingState.map = new google.maps.Map(document.getElementById('map'), {
+                center: mallCoords,
+                zoom: 14,
+            });
+
+            bookingState.mallMarker = new google.maps.Marker({
+                position: mallCoords,
+                map: bookingState.map,
+                title: bookingState.selectedMall.name
+            });
+
+            // Enable directions button if user location is already known
+            if (bookingState.userLocation) {
+                document.getElementById('directions-btn').disabled = false;
+            }
+        }
+
+        function getGeolocation() {
+            const statusEl = document.getElementById('geolocation-status');
+            const directionsBtn = document.getElementById('directions-btn');
+
+            if (!navigator.geolocation) {
+                statusEl.textContent = 'Geolocation is not supported by your browser.';
+                statusEl.className = 'alert alert-error';
+                directionsBtn.disabled = true;
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const coords = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    bookingState.userLocation = coords;
+                    statusEl.textContent = 'Your current location detected!';
+                    statusEl.className = 'alert alert-success';
+                    
+                    if (bookingState.map) {
+                        directionsBtn.disabled = false;
+                        // Center map to show both mall and user
+                        const bounds = new google.maps.LatLngBounds();
+                        bounds.extend(bookingState.selectedMall.coords);
+                        bounds.extend(coords);
+                        bookingState.map.fitBounds(bounds);
+                    }
+                },
+                (error) => {
+                    console.error('Geolocation Error:', error);
+                    bookingState.userLocation = null;
+                    statusEl.textContent = `Location access denied or failed: ${error.message}. Directions will not be available.`;
+                    statusEl.className = 'alert alert-error';
+                    directionsBtn.disabled = true;
+                }
+            );
+        }
+
+        function getDirections() {
+            if (!bookingState.userLocation || !bookingState.selectedMall || !bookingState.map) {
+                displayStatus('Cannot get directions. User location or mall not set.', 'error');
+                return;
+            }
+
+            // 1. Directions API
+            const directionsService = new google.maps.DirectionsService();
+            const directionsRenderer = new google.maps.DirectionsRenderer({ map: bookingState.map });
+
+            directionsService.route({
+                origin: bookingState.userLocation,
+                destination: bookingState.selectedMall.coords,
+                travelMode: google.maps.TravelMode.DRIVING,
+            })
+            .then((response) => {
+                directionsRenderer.setDirections(response);
+                // Optionally show a textual summary of the route
+                displayStatus('Directions path plotted on the map.', 'success');
+            })
+            .catch((e) => {
+                displayStatus('Directions request failed due to ' + e, 'error');
+                directionsRenderer.setMap(null); // Clear map if fail
+            });
+
+            // 2. Google Maps Navigation Link (deep link)
+            const userLat = bookingState.userLocation.lat;
+            const userLng = bookingState.userLocation.lng;
+            const mallLat = bookingState.selectedMall.coords.lat;
+            const mallLng = bookingState.selectedMall.coords.lng;
+            // Note: The structure for the Google Maps deep link needs to be slightly adjusted for modern mobile apps,
+            // but this format is generally recognized by the browser to open Google Maps web view.
+            const link = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${mallLat},${mallLng}&travelmode=driving`;
+            
+            const gmapsLinkEl = document.getElementById('gmaps-link');
+            gmapsLinkEl.href = link;
+            gmapsLinkEl.textContent = 'Open in Google Maps for Navigation';
+            gmapsLinkEl.classList.remove('hidden');
+        }
+
+        // --- 4. Booking Slot Logic ---
+
+        function generateParkingSlots() {
+            const slotsContainer = document.getElementById('parking-slots');
+            slotsContainer.innerHTML = '';
+            bookingState.selectedSlot = null;
+            document.getElementById('selected-slot-display').textContent = 'None';
+
+            for (let i = 1; i <= PARKING_SLOTS_COUNT; i++) {
+                const slotId = `A${i}`;
+                // Randomly mark 30% of slots as booked
+                const isBooked = Math.random() < 0.3;
+                
+                const slotDiv = document.createElement('div');
+                slotDiv.className = `slot ${isBooked ? 'booked' : 'available'}`;
+                slotDiv.textContent = slotId;
+                slotDiv.dataset.slotId = slotId;
+                
+                if (!isBooked) {
+                    slotDiv.onclick = () => selectSlot(slotId);
+                }
+
+                slotsContainer.appendChild(slotDiv);
+            }
+        }
+
+        function selectSlot(slotId) {
+            // Deselect previous slot
+            if (bookingState.selectedSlot) {
+                const prevSlotEl = document.querySelector(`.slot[data-slot-id="${bookingState.selectedSlot}"]`);
+                if (prevSlotEl) prevSlotEl.classList.remove('selected');
+            }
+
+            // Select new slot
+            const newSlotEl = document.querySelector(`.slot[data-slot-id="${slotId}"]`);
+            if (newSlotEl && !newSlotEl.classList.contains('booked')) {
+                newSlotEl.classList.add('selected');
+                bookingState.selectedSlot = slotId;
+                document.getElementById('selected-slot-display').textContent = slotId;
+            }
+        }
+
+        function handleBooking() {
+            const date = document.getElementById('booking-date').value;
+            const time = document.getElementById('start-time').value;
+
+            if (!date || !time) {
+                displayStatus('Please select a valid date and start time.', 'error');
+                return;
+            }
+
+            if (!bookingState.selectedSlot) {
+                displayStatus('Please select an available parking slot.', 'error');
+                return;
+            }
+
+            // Save booking details to state
+            bookingState.date = date;
+            bookingState.time = time;
+
+            showScreen('payment-screen');
+            displayStatus(`You are paying for slot ${bookingState.selectedSlot} at ${bookingState.selectedMall.name}.`, 'info');
+        }
+
+        // --- 5. Payment & Summary Logic ---
+
+        function handlePayment() {
+            const cardNumber = document.getElementById('card-number').value;
+            const expiry = document.getElementById('expiry').value;
+            const cvv = document.getElementById('cvv').value;
+
+            if (!cardNumber || cardNumber.length !== 16 || !expiry || !cvv) {
+                displayStatus('Please enter valid card details (16-digit number, MM/YY, CVV).', 'error');
+                return;
+            }
+
+            // Simulate successful payment
+            
+            // Finalize booking state
+            bookingState.currentBooking = {
+                id: 'PNP' + Math.floor(Math.random() * 900000 + 100000),
+                mallName: bookingState.selectedMall.name,
+                slotId: bookingState.selectedSlot,
+                dateTime: `${bookingState.date} ${bookingState.time}`,
+                duration: bookingState.duration,
+                totalPrice: `₹${bookingState.totalPrice}`
+            };
+
+            // Update summary screen
+            document.getElementById('summary-mall').textContent = bookingState.currentBooking.mallName;
+            document.getElementById('summary-slot').textContent = bookingState.currentBooking.slotId;
+            document.getElementById('summary-datetime').textContent = bookingState.currentBooking.dateTime;
+            document.getElementById('summary-duration').textContent = bookingState.currentBooking.duration;
+            document.getElementById('summary-price').textContent = bookingState.currentBooking.totalPrice;
+            document.getElementById('summary-id').textContent = bookingState.currentBooking.id;
+
+            showScreen('summary-screen');
+            displayStatus('Payment successful and booking confirmed!', 'success');
+        }
+
+        function startNewBooking() {
+            // Reset essential state variables
+            bookingState.selectedSlot = null;
+            bookingState.date = null;
+            bookingState.time = null;
+            bookingState.duration = 2;
+            bookingState.totalPrice = 0;
+            bookingState.currentBooking = {};
+
+            // Go back to mall selection
+            showScreen('mall-select-screen');
+        }
+
+
+        // --- Initialization ---
+
+        // Check for existing session on load
+        window.onload = checkSession;
+
+    </script>
+</body>
+</html>
